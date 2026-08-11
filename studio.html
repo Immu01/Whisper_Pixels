@@ -1,0 +1,1863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light') {
+                document.documentElement.classList.add('light-mode');
+            } else {
+                document.documentElement.classList.remove('light-mode');
+            }
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <title>Whisper Pixels</title>
+    <meta name="description" content="A fully functional, interactive browser studio to encrypt and hide secret data within images, video, and audio files.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100;200;300;400;500;600&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #030303;
+            --primary-glow: rgba(99, 102, 241, 0.08);
+            --secondary-glow: rgba(168, 85, 247, 0.08);
+            --text-main: rgba(255, 255, 255, 0.95);
+            --text-muted: rgba(255, 255, 255, 0.45);
+            --accent: #8b5cf6;
+            --accent-rgb: 139, 92, 246;
+
+            --card-bg: rgba(10, 10, 10, 0.05);
+            --card-border: rgba(255, 255, 255, 0.07);
+            --card-shadow-black: rgba(0, 0, 0, 0.6);
+            --card-shadow-purple: rgba(139, 92, 246, 0.38);
+            --card-highlight: rgba(255, 255, 255, 0.08);
+
+            --btn-bg: linear-gradient(135deg, #ffffff 0%, #e2e2e2 100%);
+            --btn-text: #000000;
+            --btn-hover-bg: #ffffff;
+            --btn-hover-text: #000000;
+            --btn-hover-shadow: rgba(255, 255, 255, 0.4);
+
+            --input-bg: rgba(255, 255, 255, 0.02);
+            --input-border: rgba(255, 255, 255, 0.08);
+            --input-focus-border: rgba(139, 92, 246, 0.6);
+            --code-bg: rgba(0, 0, 0, 0.3);
+
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+        }
+
+        html.light-mode {
+            --bg-color: #f6f6f9;
+            --primary-glow: rgba(99, 102, 241, 0.06);
+            --secondary-glow: rgba(168, 85, 247, 0.06);
+            --text-main: #0c0c0e;
+            --text-muted: #5a5a62;
+            --accent: #6d28d9;
+            --accent-rgb: 109, 40, 217;
+
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --card-border: rgba(255, 255, 255, 0.4);
+            --card-shadow-black: rgba(0, 0, 0, 0.03);
+            --card-shadow-purple: rgba(109, 40, 217, 0.22);
+            --card-highlight: rgba(255, 255, 255, 0.5);
+
+            --btn-bg: linear-gradient(135deg, #0d0d0f 0%, #212124 100%);
+            --btn-text: #ffffff;
+            --btn-hover-bg: #000000;
+            --btn-hover-text: #ffffff;
+            --btn-hover-shadow: rgba(0, 0, 0, 0.2);
+
+            --input-bg: rgba(0, 0, 0, 0.02);
+            --input-border: rgba(0, 0, 0, 0.12);
+            --input-focus-border: rgba(109, 40, 217, 0.6);
+            --code-bg: rgba(255, 255, 255, 0.6);
+
+            --success-color: #059669;
+            --warning-color: #d97706;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            opacity: 0;
+            animation: pageEntrance 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+            transition: background-color 0.8s cubic-bezier(0.25, 1, 0.5, 1),
+                        color 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        @keyframes pageEntrance {
+            to { opacity: 1; }
+        }
+
+        canvas#pixelCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .ambient-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 2;
+            pointer-events: none;
+            will-change: transform;
+        }
+
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(140px);
+            opacity: 0.4;
+            transform: translate3d(0,0,0);
+            will-change: transform;
+            animation: floatBlob 25s infinite alternate ease-in-out;
+            transition: background 0.8s ease;
+        }
+
+        .blob-1 {
+            top: -15%;
+            left: -15%;
+            width: 55vw;
+            height: 55vw;
+            background: var(--primary-glow);
+        }
+
+        .blob-2 {
+            bottom: -15%;
+            right: -15%;
+            width: 55vw;
+            height: 55vw;
+            background: var(--secondary-glow);
+            animation-delay: -8s;
+        }
+
+        @keyframes floatBlob {
+            0% { transform: translate3d(0, 0, 0) scale(1); }
+            100% { transform: translate3d(5vw, 5vh, 0) scale(1.1); }
+        }
+
+        .studio-wrapper {
+            position: relative;
+            z-index: 3;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            overflow: hidden;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 1.2rem;
+        }
+
+        html.light-mode .header {
+            border-bottom-color: rgba(0, 0, 0, 0.06);
+        }
+
+        .header h1 {
+            font-size: 1.6rem;
+            font-weight: 200;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .header h1 span {
+            font-weight: 500;
+            color: var(--accent);
+        }
+
+        .btn-back {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0.6rem 1.2rem;
+            border-radius: 30px;
+            border: 1px solid var(--card-border);
+            background: var(--card-bg);
+            transition: all 0.3s ease;
+        }
+
+        .btn-back:hover {
+            color: var(--text-main);
+            border-color: rgba(var(--accent-rgb), 0.4);
+            box-shadow: 0 0 15px rgba(var(--accent-rgb), 0.2);
+        }
+
+        .workspace-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2.5rem;
+            width: 100%;
+            flex: 1;
+            min-height: 0;
+            animation: fadeInGrid 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes fadeInGrid {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .glass-panel {
+            padding: 2rem;
+            border-radius: 24px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            box-shadow: 0 40px 80px var(--card-shadow-black),
+                        0 0 50px var(--card-shadow-purple),
+                        inset 0 1px 0 var(--card-highlight);
+            backdrop-filter: blur(3px);
+            -webkit-backdrop-filter: blur(3px);
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+            height: 100%;
+            min-height: 0;
+            overflow: hidden;
+            transition: background 0.8s ease, border-color 0.8s ease, box-shadow 0.8s ease;
+        }
+
+        .input-panel {
+            padding: 0 2rem 2rem 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+            height: 100%;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .panel-title {
+            font-size: 1.3rem;
+            font-weight: 300;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: var(--text-main);
+            border-left: 3px solid var(--accent);
+            padding-left: 12px;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .form-group-flex {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .form-group label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .form-group.has-error .form-input,
+        .form-group.has-error .form-textarea {
+            border-color: var(--warning-color) !important;
+            background: rgba(239, 68, 68, 0.02) !important;
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.15) !important;
+        }
+
+        .form-group.has-error label {
+            color: var(--warning-color) !important;
+        }
+
+        .form-group.has-error label::after {
+            content: ' !';
+            color: var(--warning-color);
+            font-weight: 800;
+            font-size: 1.1rem;
+            margin-left: 6px;
+            animation: blink-warning 1s infinite alternate;
+            vertical-align: middle;
+            line-height: 1;
+        }
+
+        @keyframes blink-warning {
+            0% { opacity: 0.4; }
+            100% { opacity: 1; }
+        }
+
+        .form-input, .form-textarea {
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 0.9rem;
+            padding: 0.8rem 1rem;
+            border-radius: 12px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .form-textarea {
+            resize: none;
+            min-height: 80px;
+            flex: 1;
+            line-height: 1.5;
+        }
+
+        .form-input:focus, .form-textarea:focus {
+            border-color: var(--input-focus-border);
+            box-shadow: 0 0 15px rgba(var(--accent-rgb), 0.15);
+            background: rgba(var(--accent-rgb), 0.02);
+        }
+
+        .mode-toggle-group {
+            display: flex;
+            flex-direction: row;
+            gap: 0.8rem;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            color: var(--text-muted);
+            padding: 0.7rem 0.9rem;
+            border-radius: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-align: left;
+            box-shadow: 0 4px 12px var(--card-shadow-black);
+            transition: all 0.3s ease;
+            outline: none;
+            min-width: 0;
+        }
+
+        .mode-btn:hover {
+            color: var(--text-main);
+            border-color: rgba(var(--accent-rgb), 0.3);
+            background: rgba(var(--accent-rgb), 0.02);
+        }
+
+        .mode-btn.active {
+            border-color: var(--accent);
+            background: rgba(var(--accent-rgb), 0.08);
+            color: var(--text-main);
+            box-shadow: 0 0 20px rgba(var(--accent-rgb), 0.2);
+        }
+
+        .mode-btn-icon {
+            font-size: 1.4rem;
+        }
+
+        .mode-btn-title {
+            font-size: 0.95rem;
+            font-weight: 500;
+            display: block;
+        }
+
+        .mode-btn-desc {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            display: block;
+            margin-top: 2px;
+        }
+
+        .dropzone {
+            border: 2px dashed var(--input-border);
+            border-radius: 16px;
+            padding: 2.2rem 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            background: var(--input-bg);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            min-height: 160px;
+        }
+
+        .dropzone:hover {
+            border-color: var(--accent);
+            background: rgba(var(--accent-rgb), 0.02);
+        }
+
+        .dropzone.dragover {
+            border-color: var(--accent);
+            background: rgba(var(--accent-rgb), 0.05);
+            box-shadow: 0 0 15px rgba(var(--accent-rgb), 0.1);
+        }
+
+        .dropzone.invalid-dropzone {
+            border-color: var(--warning-color) !important;
+            background: rgba(239, 68, 68, 0.02) !important;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.1) !important;
+        }
+
+        .dropzone-icon {
+            font-size: 2.2rem;
+            color: var(--text-muted);
+            filter: drop-shadow(0 0 10px rgba(255,255,255,0.02));
+            transition: color 0.3s ease;
+        }
+
+        .dropzone:hover .dropzone-icon {
+            color: var(--accent);
+        }
+
+        .dropzone p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .stego-fields {
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+            width: 100%;
+        }
+
+        .preview-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            flex: 1;
+            min-height: 0;
+            padding: 1rem;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        html.light-mode .preview-box {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(0, 0, 0, 0.06);
+        }
+
+        #media-preview-container img, #media-preview-container video, #media-output-preview-box img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        #media-preview-container audio {
+            width: 100%;
+            outline: none;
+            margin-top: 15px;
+        }
+
+        .stego-loader {
+            width: 100%;
+            display: none;
+            padding: 1rem;
+            border-radius: 12px;
+            background: rgba(var(--accent-rgb), 0.05);
+            border: 1px solid rgba(var(--accent-rgb), 0.15);
+            margin-top: 10px;
+        }
+
+        .loader-status {
+            font-size: 0.78rem;
+            color: var(--accent);
+            font-family: 'Fira Code', monospace;
+            margin-bottom: 8px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            width: 0%;
+            height: 100%;
+            background: var(--accent);
+            border-radius: 2px;
+            transition: width 0.1s linear;
+        }
+
+        .hint-block {
+            padding: 0.9rem 1.2rem;
+            border-radius: 12px;
+            background: rgba(245, 158, 11, 0.06);
+            border: 1px solid rgba(245, 158, 11, 0.15);
+            color: var(--warning-color);
+            font-size: 0.85rem;
+            line-height: 1.4;
+            font-family: 'Fira Code', monospace;
+        }
+
+        .btn-action {
+            background: var(--btn-bg);
+            border: none;
+            color: var(--btn-text);
+            padding: 0.9rem 2rem;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            cursor: pointer;
+            box-shadow: 0 10px 20px var(--card-shadow-black),
+                        0 0 20px rgba(var(--accent-rgb), 0.2);
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1),
+                        background 0.8s ease,
+                        color 0.8s ease,
+                        box-shadow 0.8s ease;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px rgba(var(--accent-rgb), 0.35),
+                        0 0 10px var(--btn-hover-shadow);
+            background: var(--btn-hover-bg);
+            color: var(--btn-hover-text);
+        }
+
+        .result-panel {
+            padding: 1.5rem;
+            border-radius: 16px;
+            background: var(--code-bg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: none;
+            flex-direction: column;
+            gap: 15px;
+            animation: slideDown 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            width: 100%;
+        }
+
+        html.light-mode .result-panel {
+            border-color: rgba(0, 0, 0, 0.05);
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-panel.active {
+            display: flex;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--success-color);
+            font-weight: 600;
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 12px;
+            width: 100%;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            padding: 0.7rem 1.4rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            flex-grow: 1;
+            text-align: center;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(var(--accent-rgb), 0.1);
+            border-color: rgba(var(--accent-rgb), 0.4);
+            box-shadow: 0 0 15px rgba(var(--accent-rgb), 0.1);
+        }
+
+        .stego-space-dot {
+            display: inline-block;
+            width: 10px;
+            height: 18px;
+            border: 1px dashed var(--accent);
+            background: rgba(var(--accent-rgb), 0.18);
+            margin: 0 3px;
+            vertical-align: middle;
+            position: relative;
+            border-radius: 3px;
+        }
+
+        .stego-space-dot::after {
+            content: 'ZWC';
+            position: absolute;
+            font-size: 0.45rem;
+            color: var(--accent);
+            top: -14px;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            opacity: 0.85;
+            letter-spacing: 0.02em;
+        }
+
+        #text-output-preview {
+            line-height: 2.2;
+            word-break: break-all;
+            background: rgba(0,0,0,0.15);
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.03);
+            color: var(--text-main);
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+        }
+
+        #text-result-panel {
+            flex: 1;
+            min-height: 0;
+        }
+
+        .preview-pane-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+            width: 100%;
+            flex: 1;
+            min-height: 0;
+        }
+
+        @media (max-width: 768px) {
+            .workspace-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+        }
+
+        body.page-exit {
+            transition: opacity 0.5s ease !important;
+            opacity: 0 !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ambient-bg">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+
+    <canvas id="pixelCanvas"></canvas>
+
+    <div class="studio-wrapper">
+
+        <header class="header">
+            <h1>Whisper <span>Pixels</span></h1>
+            <a href="javascript:void(0)" onclick="navigateToHome()" class="btn-back">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                Dashboard
+            </a>
+        </header>
+
+        <main class="workspace-grid">
+
+            <div class="input-panel" id="left-panel">
+                <div>
+                    <h2 class="panel-title">Stego Dashboard</h2>
+                </div>
+
+                <div class="mode-toggle-group">
+                    <button class="mode-btn active" id="btn-mode-media" onclick="setStegoMode('media')">
+                        <span class="mode-btn-icon">📁</span>
+                        <div style="flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
+                            <span class="mode-btn-title" style="font-size: 0.85rem;">Media Stego</span>
+                            <span class="mode-btn-desc" style="font-size: 0.65rem;">Image, Video, Audio</span>
+                        </div>
+                    </button>
+                    <button class="mode-btn" id="btn-mode-text" onclick="setStegoMode('text')">
+                        <span class="mode-btn-icon">📝</span>
+                        <div style="flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
+                            <span class="mode-btn-title" style="font-size: 0.85rem;">Text Stego</span>
+                            <span class="mode-btn-desc" style="font-size: 0.65rem;">Invisible spaces</span>
+                        </div>
+                    </button>
+                </div>
+
+                <div id="dynamic-action-zone" style="display: none; flex-direction: column; gap: 1.2rem; width: 100%; margin-top: 10px;">
+
+                    <div id="encode-fields" style="display: none; flex-direction: column; gap: 1.2rem; width: 100%;">
+
+                        <div class="form-group">
+                            <label>Secret Message</label>
+                            <textarea class="form-textarea" id="stego-msg" placeholder="Write your hidden message here..." style="min-height: 80px; flex: none;"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Lock Password</label>
+                            <input class="form-input" type="password" id="stego-password" placeholder="Enter password to encrypt...">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Hint Message</label>
+                            <input class="form-input" type="text" id="stego-hint" placeholder="Enter hint to reveal password clues...">
+                        </div>
+
+                        <button class="btn-action" onclick="encryptCarrier()">
+                            Encrypt
+                        </button>
+                        <div id="copy-status-message" style="display: none; font-size: 0.82rem; color: var(--success-color); margin-top: 8px; text-align: center; font-family: 'Fira Code', monospace; letter-spacing: 0.02em;">✓ Copied to Clipboard!</div>
+                    </div>
+
+                    <div id="decode-fields" style="display: none; flex-direction: column; gap: 1.2rem; width: 100%;">
+
+                        <div class="form-group">
+                            <label>Embedded Clue Hint</label>
+                            <div class="hint-block" id="decoded-hint-display">Hint: None</div>
+                        </div>
+
+                        <div class="form-group" id="decode-password-group" style="display: none;">
+                            <label>Enter Passcode</label>
+                            <input class="form-input" type="password" id="decode-password" placeholder="This carrier is locked. Type password...">
+                        </div>
+
+                        <button class="btn-action" onclick="decryptCarrier()">
+                            Decrypt
+                        </button>
+                    </div>
+
+                </div>
+
+                <div style="flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 1.2rem; margin-top: 15px;">
+
+                    <div class="preview-pane-wrapper" id="media-output-zone" style="display: none;">
+
+                        <div class="result-panel" id="media-result-panel">
+                            <div class="result-header">
+                                <span>✓ Stego Carrier Created</span>
+                            </div>
+                            <div class="result-actions">
+                                <a id="media-download-btn" href="" download="whisper_pixels_stego.png" class="btn-secondary">Download Stego File</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="preview-pane-wrapper" id="text-output-zone" style="display: none;">
+                        <div class="result-panel active" id="text-result-panel" style="display: flex;">
+                            <div class="result-header">
+                                <span>Stego Text Visual Representation</span>
+                                <span id="copy-action-btn" onclick="copyStegoText()" style="cursor: pointer; font-size: 0.72rem; text-decoration: underline; color: var(--accent); display: none;">Copy Stego Text</span>
+                            </div>
+                            <div class="result-text" id="text-output-raw" style="display: none;"></div>
+                            <div id="text-output-preview"></div>
+                        </div>
+                    </div>
+
+                    <div class="preview-pane-wrapper" id="decrypt-output-zone" style="display: none;">
+                        <div class="result-panel active" style="display: flex;">
+                            <div class="result-header" id="decrypt-result-header">
+                                <span style="color: var(--success-color);">✓ Decrypted Message Extracted</span>
+                            </div>
+                            <div class="result-text" id="decrypted-message-text" style="font-family: 'Fira Code', monospace; line-height: 1.6; max-height: 140px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="glass-panel" id="right-panel">
+                <div>
+                    <h2 class="panel-title" id="right-panel-title">Carrier Canvas</h2>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;" id="right-panel-subtitle">Insert cover media file to process steganography</p>
+                </div>
+
+                <div class="stego-fields" id="media-fields" style="flex: 1; min-height: 0;">
+                    <div class="form-group" style="flex: 1; min-height: 0;">
+                        <label>Cover Carrier File</label>
+
+                        <div class="dropzone" id="media-dropzone" onclick="triggerFileInput('media-input')" style="height: 100%; flex: 1;">
+                            <span class="dropzone-icon">📁</span>
+                            <p id="img-enc-text">Drag file here or click to select cover media<br><span style="font-size: 0.65rem;">Images (PNG, JPG, BMP), Video (MP4, WebM), Audio (MP3, WAV)</span></p>
+                            <input type="file" id="media-input" style="display: none;" accept="image/*,video/*,audio/*" onchange="previewUpload(this)">
+                        </div>
+
+                        <div id="media-preview-wrapper" style="display: none; flex-direction: column; gap: 8px; width: 100%; flex: 1; min-height: 0;">
+                            <div class="preview-box" id="media-preview-container"></div>
+                            <button class="btn-secondary" onclick="resetUpload()" style="padding: 0.4rem 1rem; font-size: 0.72rem; border-radius: 12px; margin-top: 4px; flex-grow: 0; width: 100%;">Change File</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stego-fields" id="text-fields" style="display: none; flex: 1; min-height: 0;">
+                    <div class="form-group-flex">
+                        <label>Cover Text Content</label>
+                        <textarea class="form-textarea" id="text-cover-input" placeholder="Type or paste your cover text sentence here..." style="height: 100%;"></textarea>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        let currentMode = 'media';
+        let coverFile = null;
+
+        let detectedStegoData = false;
+        let detectedHasPassword = false;
+        let detectedPasswordHash = 0;
+        let detectedHintText = "";
+        let detectedEncMsgBytes = null;
+
+        function hashPassword(str) {
+            if (!str) return 0;
+            let hash = 5381;
+            for (let i = 0; i < str.length; i++) {
+                hash = ((hash << 5) + hash) + str.charCodeAt(i);
+            }
+            return (hash & 0xFFFFFFFF) >>> 0;
+        }
+
+        function xorCipher(bytes, keyStr) {
+            if (!keyStr) return bytes;
+            const keyBytes = new TextEncoder().encode(keyStr);
+            const out = new Uint8Array(bytes.length);
+            for (let i = 0; i < bytes.length; i++) {
+                out[i] = bytes[i] ^ keyBytes[i % keyBytes.length];
+            }
+            return out;
+        }
+
+        function bytesToHex(bytes) {
+            return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        function hexToBytes(hex) {
+            const bytes = new Uint8Array(hex.length / 2);
+            for (let i = 0; i < hex.length; i += 2) {
+                bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
+            }
+            return bytes;
+        }
+
+        function setStegoMode(mode) {
+            currentMode = mode;
+
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            if (mode === 'media') {
+                document.getElementById('btn-mode-media').classList.add('active');
+                document.getElementById('media-fields').style.display = 'flex';
+                document.getElementById('text-fields').style.display = 'none';
+                document.getElementById('right-panel-title').innerText = "Carrier Canvas";
+                document.getElementById('right-panel-subtitle').innerText = "Insert cover media file to process steganography";
+                resetUpload();
+            } else {
+                document.getElementById('btn-mode-text').classList.add('active');
+                document.getElementById('media-fields').style.display = 'none';
+                document.getElementById('text-fields').style.display = 'flex';
+                document.getElementById('right-panel-title').innerText = "Text Workspace";
+                document.getElementById('right-panel-subtitle').innerText = "Input a cover sentence to process steganography";
+                resetTextConsole();
+            }
+
+            resetOutputs();
+        }
+
+        function resetTextConsole() {
+            document.getElementById('text-cover-input').value = '';
+            document.getElementById('dynamic-action-zone').style.display = 'none';
+            detectedStegoData = false;
+            resetOutputs();
+        }
+
+        document.getElementById('text-cover-input').addEventListener('input', function(e) {
+            const val = e.target.value;
+            if (!val) {
+                document.getElementById('dynamic-action-zone').style.display = 'none';
+                return;
+            }
+
+            const startIdx = val.indexOf('\u200D');
+            const endIdx = val.indexOf('\u200E');
+
+            if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+
+                const hiddenChars = val.substring(startIdx + 1, endIdx);
+                let binaryStr = "";
+                for (let i = 0; i < hiddenChars.length; i++) {
+                    const char = hiddenChars[i];
+                    if (char === '\u200B') binaryStr += '0';
+                    else if (char === '\u200C') binaryStr += '1';
+                }
+
+                if (binaryStr.length % 8 === 0 && binaryStr.length > 0) {
+                    const bytes = new Uint8Array(binaryStr.length / 8);
+                    for (let i = 0; i < binaryStr.length; i += 8) {
+                        bytes[i / 8] = parseInt(binaryStr.substring(i, i + 8), 2);
+                    }
+
+                    parseStegoPayload(bytes);
+                } else {
+                    showCleanFields();
+                }
+            } else {
+                showCleanFields();
+            }
+        });
+
+        function resetWorkspace() {
+
+            coverFile = null;
+            const fileInput = document.getElementById('media-input');
+            if (fileInput) fileInput.value = '';
+
+            const dropzone = document.getElementById('media-dropzone');
+            if (dropzone) {
+                dropzone.style.display = 'flex';
+                dropzone.classList.remove('invalid-dropzone');
+            }
+
+            const previewWrapper = document.getElementById('media-preview-wrapper');
+            if (previewWrapper) previewWrapper.style.display = 'none';
+
+            const previewContainer = document.getElementById('media-preview-container');
+            if (previewContainer) previewContainer.innerHTML = '';
+
+            const coverText = document.getElementById('text-cover-input');
+            if (coverText) coverText.value = '';
+
+            const msgInput = document.getElementById('stego-msg');
+            if (msgInput) msgInput.value = '';
+
+            const passInput = document.getElementById('stego-password');
+            if (passInput) passInput.value = '';
+
+            const hintInput = document.getElementById('stego-hint');
+            if (hintInput) hintInput.value = '';
+
+            const decodePass = document.getElementById('decode-password');
+            if (decodePass) decodePass.value = '';
+
+            document.querySelectorAll('.form-group').forEach(el => el.classList.remove('has-error'));
+
+            document.getElementById('dynamic-action-zone').style.display = 'none';
+            resetOutputs();
+        }
+
+        function triggerFileInput(inputId) {
+            document.getElementById(inputId).click();
+        }
+
+        function navigateToHome() {
+            document.body.classList.add('page-exit');
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 500);
+        }
+
+        function copyTextToClipboard(text, onComplete) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    if (onComplete) onComplete();
+                }).catch(err => {
+                    console.error("Secure copy failed: ", err);
+                    fallbackCopyText(text, onComplete);
+                });
+            } else {
+                fallbackCopyText(text, onComplete);
+            }
+        }
+
+        function fallbackCopyText(text, onComplete) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+            } catch (err) {
+                console.error('Fallback copy failed: ', err);
+            }
+            document.body.removeChild(textArea);
+            if (onComplete) onComplete();
+        }
+
+        function copyStegoText() {
+            const text = document.getElementById('text-output-raw').innerText;
+            copyTextToClipboard(text, () => {
+                alert("Stego text copied to clipboard! (The secret characters are hidden inside it)");
+            });
+        }
+
+        function resetOutputs() {
+            document.getElementById('media-output-zone').style.display = 'none';
+            document.getElementById('text-output-zone').style.display = 'none';
+            document.getElementById('decrypt-output-zone').style.display = 'none';
+            document.getElementById('media-result-panel').classList.remove('active');
+
+            const validationErr = document.getElementById('encrypt-validation-error');
+            if (validationErr) validationErr.style.display = 'none';
+        }
+
+        function showLoader(duration, statusText, onComplete) {
+            const loader = document.getElementById('stego-loader');
+            if (!loader) {
+                if (onComplete) onComplete();
+                return;
+            }
+
+            const statusEl = loader.querySelector('.loader-status');
+            const fillEl = loader.querySelector('.progress-fill');
+
+            if (statusEl) statusEl.innerText = statusText;
+            if (fillEl) {
+                fillEl.style.transition = 'none';
+                fillEl.style.width = '0%';
+                fillEl.offsetHeight;
+                fillEl.style.transition = `width ${duration}ms linear`;
+                fillEl.style.width = '100%';
+            }
+
+            loader.style.display = 'block';
+
+            setTimeout(() => {
+                loader.style.display = 'none';
+                if (fillEl) fillEl.style.width = '0%';
+                if (onComplete) onComplete();
+            }, duration);
+        }
+
+        function previewUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            coverFile = file;
+
+            const objectUrl = URL.createObjectURL(file);
+            renderPreview(file.type, objectUrl);
+
+            const dropzone = document.getElementById('media-dropzone');
+            if (dropzone) {
+                dropzone.style.display = 'none';
+                dropzone.classList.remove('invalid-dropzone');
+            }
+            document.getElementById('media-preview-wrapper').style.display = 'flex';
+
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
+
+                        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const data = imgData.data;
+
+                        let bitIndex = 0;
+                        const headerBytes = new Uint8Array(6);
+
+                        for (let i = 0; i < data.length; i += 4) {
+                            for (let c = 0; c < 3; c++) {
+                                if (bitIndex < 48) {
+                                    const bytePos = Math.floor(bitIndex / 8);
+                                    const bitPos = 7 - (bitIndex % 8);
+                                    const bitVal = data[i + c] & 1;
+                                    headerBytes[bytePos] |= (bitVal << bitPos);
+                                    bitIndex++;
+                                } else {
+                                    break;
+                                }
+                            }
+                            if (bitIndex >= 48) break;
+                        }
+
+                        if (headerBytes[0] === 0x57 && headerBytes[1] === 0x50) {
+
+                            const msgLength = (headerBytes[2] << 24) | (headerBytes[3] << 16) | (headerBytes[4] << 8) | headerBytes[5];
+
+                            const totalBytesToExtract = Math.min((data.length/4)*3, 2000);
+                            const payload = new Uint8Array(totalBytesToExtract);
+
+                            bitIndex = 0;
+                            for (let i = 0; i < data.length; i += 4) {
+                                for (let c = 0; c < 3; c++) {
+                                    if (bitIndex < totalBytesToExtract * 8) {
+                                        const bytePos = Math.floor(bitIndex / 8);
+                                        const bitPos = 7 - (bitIndex % 8);
+                                        const bitVal = data[i + c] & 1;
+                                        payload[bytePos] |= (bitVal << bitPos);
+                                        bitIndex++;
+                                    } else {
+                                        break;
+                                    }
+                                }
+                                if (bitIndex >= totalBytesToExtract * 8) break;
+                            }
+
+                            parseStegoPayload(payload);
+                        } else {
+                            showCleanFields();
+                        }
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            } else {
+
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    const bytes = new Uint8Array(evt.target.result);
+                    const len = bytes.length;
+                    if (len >= 8) {
+
+                        if (bytes[len - 4] === 0x57 && bytes[len - 3] === 0x50 &&
+                            bytes[len - 2] === 0x46 && bytes[len - 1] === 0x21) {
+
+                            const payloadSize = (((bytes[len - 8] << 24) |
+                                                 (bytes[len - 7] << 16) |
+                                                 (bytes[len - 6] << 8) |
+                                                 bytes[len - 5]) >>> 0);
+
+                            if (payloadSize > 0 && len >= 8 + payloadSize) {
+                                const payloadBytes = bytes.slice(len - 8 - payloadSize, len - 8);
+                                parseStegoPayload(payloadBytes);
+                                return;
+                            }
+                        }
+                    }
+                    showCleanFields();
+                };
+
+                reader.readAsArrayBuffer(file.slice(Math.max(0, file.size - 10000)));
+            }
+        }
+
+        function resetUpload() {
+            coverFile = null;
+            document.getElementById('media-input').value = '';
+            document.getElementById('media-dropzone').style.display = 'flex';
+            document.getElementById('media-preview-wrapper').style.display = 'none';
+            document.getElementById('img-enc-text').innerHTML = `Drag file here or click to select cover media<br><span style="font-size: 0.65rem;">Images (PNG, JPG, BMP), Video (MP4, WebM), Audio (MP3, WAV)</span>`;
+            document.getElementById('dynamic-action-zone').style.display = 'none';
+
+            resetOutputs();
+        }
+
+        function renderPreview(type, url) {
+            const container = document.getElementById('media-preview-container');
+            container.innerHTML = '';
+
+            if (type.startsWith('image/')) {
+                const img = document.createElement('img');
+                img.src = url;
+                container.appendChild(img);
+            } else if (type.startsWith('video/')) {
+                const video = document.createElement('video');
+                video.src = url;
+                video.controls = true;
+                container.appendChild(video);
+            } else if (type.startsWith('audio/')) {
+                const audio = document.createElement('audio');
+                audio.src = url;
+                audio.controls = true;
+                container.appendChild(audio);
+            } else {
+                container.innerHTML = `<p style="font-size:0.85rem; color:var(--text-muted);">Preview not supported for this file format.</p>`;
+            }
+        }
+
+        function parseStegoPayload(payloadBytes) {
+            if (payloadBytes[0] !== 0x57 || payloadBytes[1] !== 0x50) {
+                showCleanFields();
+                return;
+            }
+
+            try {
+                let offset = 2;
+                detectedHasPassword = payloadBytes[offset++] === 1;
+
+                detectedPasswordHash = (payloadBytes[offset++] * 16777216) +
+                                       (payloadBytes[offset++] * 65536) +
+                                       (payloadBytes[offset++] * 256) +
+                                       payloadBytes[offset++];
+
+                const hintLen = (payloadBytes[offset++] * 256) + payloadBytes[offset++];
+                const hintBytes = payloadBytes.slice(offset, offset + hintLen);
+                offset += hintLen;
+                detectedHintText = new TextDecoder().decode(hintBytes);
+
+                const msgLen = (payloadBytes[offset++] * 16777216) +
+                               (payloadBytes[offset++] * 65536) +
+                               (payloadBytes[offset++] * 256) +
+                               payloadBytes[offset++];
+
+                detectedEncMsgBytes = payloadBytes.slice(offset, offset + msgLen);
+                detectedStegoData = true;
+
+                showDecryptFields(detectedHintText || "None specified.", detectedHasPassword);
+            } catch (err) {
+                console.error("Payload extraction failed: ", err);
+                showCleanFields();
+            }
+        }
+
+        function showCleanFields() {
+            detectedStegoData = false;
+            document.getElementById('dynamic-action-zone').style.display = 'flex';
+            document.getElementById('encode-fields').style.display = 'flex';
+            document.getElementById('decode-fields').style.display = 'none';
+
+            resetOutputs();
+        }
+
+        function showDecryptFields(hint, hasPass) {
+            document.getElementById('dynamic-action-zone').style.display = 'flex';
+            document.getElementById('encode-fields').style.display = 'none';
+            document.getElementById('decode-fields').style.display = 'flex';
+
+            document.getElementById('decoded-hint-display').innerText = `Hint Clue: ${hint}`;
+
+            const passGrp = document.getElementById('decode-password-group');
+            if (hasPass) {
+                passGrp.style.display = 'flex';
+                document.getElementById('decode-password').value = '';
+            } else {
+                passGrp.style.display = 'none';
+            }
+
+            resetOutputs();
+        }
+
+        function encryptCarrier() {
+
+            document.querySelectorAll('.form-group').forEach(el => el.classList.remove('has-error'));
+            const dropzone = document.getElementById('media-dropzone');
+            if (dropzone) dropzone.classList.remove('invalid-dropzone');
+
+            const msg = document.getElementById('stego-msg').value;
+            const password = document.getElementById('stego-password').value;
+            const hint = document.getElementById('stego-hint').value;
+
+            let isValid = true;
+
+            if (!msg) {
+                document.getElementById('stego-msg').closest('.form-group').classList.add('has-error');
+                isValid = false;
+            }
+            if (!password) {
+                document.getElementById('stego-password').closest('.form-group').classList.add('has-error');
+                isValid = false;
+            }
+            if (!hint) {
+                document.getElementById('stego-hint').closest('.form-group').classList.add('has-error');
+                isValid = false;
+            }
+
+            if (currentMode === 'media') {
+                if (!coverFile) {
+                    if (dropzone) dropzone.classList.add('invalid-dropzone');
+                    isValid = false;
+                }
+            } else {
+                const coverInput = document.getElementById('text-cover-input').value;
+                if (!coverInput) {
+                    document.getElementById('text-cover-input').closest('.form-group').classList.add('has-error');
+                    isValid = false;
+                }
+            }
+
+            if (!isValid) {
+
+                const firstError = document.querySelector('.form-group.has-error, .invalid-dropzone');
+                if (firstError) {
+                    firstError.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+                return;
+            }
+
+            resetOutputs();
+
+            if (currentMode === 'media') {
+                try {
+
+                    const encoder = new TextEncoder();
+                    const msgBytes = encoder.encode(msg);
+                    const hintBytes = encoder.encode(hint || "");
+                    const hasPassword = password ? 1 : 0;
+                    const passHash = hasPassword ? hashPassword(password) : 0;
+
+                    const finalMsgBytes = hasPassword ? xorCipher(msgBytes, password) : msgBytes;
+
+                    if (coverFile.type.startsWith('image/')) {
+                        const previewImg = document.querySelector('#media-preview-container img');
+                        if (!previewImg) {
+                            showValidationError("✗ Preview image not found. Please try uploading again.");
+                            return;
+                        }
+
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = previewImg.naturalWidth || previewImg.width;
+                        canvas.height = previewImg.naturalHeight || previewImg.height;
+                        ctx.drawImage(previewImg, 0, 0);
+
+                        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const data = imgData.data;
+
+                        const payloadLength = 2 + 1 + 4 + 2 + hintBytes.length + 4 + finalMsgBytes.length;
+                        const payload = new Uint8Array(payloadLength);
+
+                        let offset = 0;
+                        payload[offset++] = 0x57;
+                        payload[offset++] = 0x50;
+                        payload[offset++] = hasPassword;
+
+                        payload[offset++] = (passHash >> 24) & 0xFF;
+                        payload[offset++] = (passHash >> 16) & 0xFF;
+                        payload[offset++] = (passHash >> 8) & 0xFF;
+                        payload[offset++] = passHash & 0xFF;
+
+                        payload[offset++] = (hintBytes.length >> 8) & 0xFF;
+                        payload[offset++] = hintBytes.length & 0xFF;
+
+                        payload.set(hintBytes, offset);
+                        offset += hintBytes.length;
+
+                        payload[offset++] = (finalMsgBytes.length >> 24) & 0xFF;
+                        payload[offset++] = (finalMsgBytes.length >> 16) & 0xFF;
+                        payload[offset++] = (finalMsgBytes.length >> 8) & 0xFF;
+                        payload[offset++] = finalMsgBytes.length & 0xFF;
+
+                        payload.set(finalMsgBytes, offset);
+
+                        const totalBits = payload.length * 8;
+                        if (totalBits > (data.length / 4) * 3) {
+                            showValidationError("✗ Secret payload is too large for this carrier image!");
+                            return;
+                        }
+
+                        let bitIdx = 0;
+                        for (let i = 0; i < data.length; i += 4) {
+                            for (let c = 0; c < 3; c++) {
+                                if (bitIdx < totalBits) {
+                                    const bytePos = Math.floor(bitIdx / 8);
+                                    const bitPos = 7 - (bitIdx % 8);
+                                    const bitVal = (payload[bytePos] >> bitPos) & 1;
+                                    data[i + c] = (data[i + c] & 0xFE) | bitVal;
+                                    bitIdx++;
+                                } else {
+                                    break;
+                                }
+                            }
+                            if (bitIdx >= totalBits) break;
+                        }
+                        ctx.putImageData(imgData, 0, 0);
+
+                        const stegoUrl = canvas.toDataURL('image/png');
+
+                        const tempLink = document.createElement('a');
+                        tempLink.href = stegoUrl;
+                        tempLink.download = coverFile.name;
+                        document.body.appendChild(tempLink);
+                        tempLink.click();
+                        document.body.removeChild(tempLink);
+
+                        setTimeout(() => {
+                            resetWorkspace();
+                        }, 2000);
+                    } else {
+
+                        const reader = new FileReader();
+                        reader.onload = function(evt) {
+                            try {
+                                const originalBytes = new Uint8Array(evt.target.result);
+
+                                const payloadSize = 2 + 1 + 4 + 2 + hintBytes.length + 4 + finalMsgBytes.length;
+                                const payload = new Uint8Array(payloadSize);
+
+                                let offset = 0;
+                                payload[offset++] = 0x57;
+                                payload[offset++] = 0x50;
+                                payload[offset++] = hasPassword;
+
+                                payload[offset++] = (passHash >> 24) & 0xFF;
+                                payload[offset++] = (passHash >> 16) & 0xFF;
+                                payload[offset++] = (passHash >> 8) & 0xFF;
+                                payload[offset++] = passHash & 0xFF;
+
+                                payload[offset++] = (hintBytes.length >> 8) & 0xFF;
+                                payload[offset++] = hintBytes.length & 0xFF;
+
+                                payload.set(hintBytes, offset);
+                                offset += hintBytes.length;
+
+                                payload[offset++] = (finalMsgBytes.length >> 24) & 0xFF;
+                                payload[offset++] = (finalMsgBytes.length >> 16) & 0xFF;
+                                payload[offset++] = (finalMsgBytes.length >> 8) & 0xFF;
+                                payload[offset++] = finalMsgBytes.length & 0xFF;
+
+                                payload.set(finalMsgBytes, offset);
+
+                                const footer = new Uint8Array(8);
+                                footer[0] = (payloadSize >> 24) & 0xFF;
+                                footer[1] = (payloadSize >> 16) & 0xFF;
+                                footer[2] = (payloadSize >> 8) & 0xFF;
+                                footer[3] = payloadSize & 0xFF;
+
+                                footer[4] = 0x57;
+                                footer[5] = 0x50;
+                                footer[6] = 0x46;
+                                footer[7] = 0x21;
+
+                                const stegoBytes = new Uint8Array(originalBytes.length + payload.length + footer.length);
+                                stegoBytes.set(originalBytes, 0);
+                                stegoBytes.set(payload, originalBytes.length);
+                                stegoBytes.set(footer, originalBytes.length + payload.length);
+
+                                const blob = new Blob([stegoBytes], { type: coverFile.type });
+                                const downloadUrl = URL.createObjectURL(blob);
+                                const tempLink = document.createElement('a');
+                                tempLink.href = downloadUrl;
+                                tempLink.download = coverFile.name;
+                                document.body.appendChild(tempLink);
+                                tempLink.click();
+                                document.body.removeChild(tempLink);
+                            } catch (err) {
+                                console.error("EOF payload write failed, falling back to clean file download:", err);
+                                const downloadUrl = URL.createObjectURL(coverFile);
+                                const tempLink = document.createElement('a');
+                                tempLink.href = downloadUrl;
+                                tempLink.download = coverFile.name;
+                                document.body.appendChild(tempLink);
+                                tempLink.click();
+                                document.body.removeChild(tempLink);
+                            } finally {
+                                setTimeout(() => {
+                                    resetWorkspace();
+                                }, 2000);
+                            }
+                        };
+                        reader.readAsArrayBuffer(coverFile);
+                    }
+                } catch (e) {
+                    console.error("Stego encryption failed: ", e);
+
+                    try {
+                        const downloadUrl = URL.createObjectURL(coverFile);
+                        const tempLink = document.createElement('a');
+                        tempLink.href = downloadUrl;
+                        tempLink.download = coverFile.name;
+                        document.body.appendChild(tempLink);
+                        tempLink.click();
+                        document.body.removeChild(tempLink);
+                    } catch (err) {
+                        console.error("Fallback download also failed: ", err);
+                    }
+                    setTimeout(() => {
+                        resetWorkspace();
+                    }, 2000);
+                }
+            } else {
+
+                const coverInput = document.getElementById('text-cover-input').value;
+                const rawOutput = document.getElementById('text-output-raw');
+                const previewOutput = document.getElementById('text-output-preview');
+                const textOutput = document.getElementById('text-output-zone');
+                const copyBtn = document.getElementById('copy-action-btn');
+
+                const encoder = new TextEncoder();
+                const msgBytes = encoder.encode(msg);
+                const hintBytes = encoder.encode(hint || "");
+                const hasPassword = password ? 1 : 0;
+                const passHash = hasPassword ? hashPassword(password) : 0;
+
+                const finalMsgBytes = hasPassword ? xorCipher(msgBytes, password) : msgBytes;
+
+                const payloadLength = 2 + 1 + 4 + 2 + hintBytes.length + 4 + finalMsgBytes.length;
+                const payload = new Uint8Array(payloadLength);
+
+                let offset = 0;
+                payload[offset++] = 0x57;
+                payload[offset++] = 0x50;
+                payload[offset++] = hasPassword;
+
+                payload[offset++] = (passHash >> 24) & 0xFF;
+                payload[offset++] = (passHash >> 16) & 0xFF;
+                payload[offset++] = (passHash >> 8) & 0xFF;
+                payload[offset++] = passHash & 0xFF;
+
+                payload[offset++] = (hintBytes.length >> 8) & 0xFF;
+                payload[offset++] = hintBytes.length & 0xFF;
+
+                payload.set(hintBytes, offset);
+                offset += hintBytes.length;
+
+                payload[offset++] = (finalMsgBytes.length >> 24) & 0xFF;
+                payload[offset++] = (finalMsgBytes.length >> 16) & 0xFF;
+                payload[offset++] = (finalMsgBytes.length >> 8) & 0xFF;
+                payload[offset++] = finalMsgBytes.length & 0xFF;
+
+                payload.set(finalMsgBytes, offset);
+
+                let binaryStr = "";
+                for (let i = 0; i < payload.length; i++) {
+                    binaryStr += payload[i].toString(2).padStart(8, '0');
+                }
+
+                let invisiblePayload = "\u200D";
+                for (let i = 0; i < binaryStr.length; i++) {
+                    invisiblePayload += binaryStr[i] === '0' ? '\u200B' : '\u200C';
+                }
+                invisiblePayload += "\u200E";
+
+                const spaceIdx = coverInput.indexOf(' ');
+                let stegoRaw = "";
+                let stegoPreview = "";
+
+                if (spaceIdx !== -1) {
+                    stegoRaw = coverInput.slice(0, spaceIdx + 1) + invisiblePayload + coverInput.slice(spaceIdx + 1);
+                    stegoPreview = coverInput.slice(0, spaceIdx + 1) + '<span class="stego-space-dot"></span>' + coverInput.slice(spaceIdx + 1);
+                } else {
+                    stegoRaw = coverInput + invisiblePayload;
+                    stegoPreview = coverInput + '<span class="stego-space-dot"></span>';
+                }
+
+                rawOutput.innerText = stegoRaw;
+                previewOutput.innerHTML = stegoPreview;
+
+                copyTextToClipboard(stegoRaw, () => {
+                    const msgEl = document.getElementById('copy-status-message');
+                    if (msgEl) msgEl.style.display = 'block';
+
+                    setTimeout(() => {
+                        resetWorkspace();
+                    }, 2000);
+                });
+            }
+        }
+
+        function decryptCarrier() {
+
+            document.querySelectorAll('.form-group').forEach(el => el.classList.remove('has-error'));
+
+            const password = document.getElementById('decode-password').value;
+            const decryptOutput = document.getElementById('decrypt-output-zone');
+            const resultText = document.getElementById('decrypted-message-text');
+            const headerElement = document.getElementById('decrypt-result-header');
+
+            if (detectedHasPassword) {
+                if (!password) {
+                    document.getElementById('decode-password').closest('.form-group').classList.add('has-error');
+                    resetOutputs();
+                    return;
+                }
+
+                const inputHash = hashPassword(password);
+                if (inputHash !== detectedPasswordHash) {
+                    resetOutputs();
+                    headerElement.innerHTML = '<span style="color: var(--warning-color);">✗ Decryption Failed</span>';
+                    resultText.innerText = "Incorrect Password! Access Denied.";
+                    resultText.style.color = 'var(--warning-color)';
+                    decryptOutput.style.display = 'flex';
+                    decryptOutput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                    setTimeout(() => {
+                        const passEl = document.getElementById('decode-password');
+                        if (passEl) {
+                            passEl.value = '';
+                            const group = passEl.closest('.form-group');
+                            if (group) group.classList.remove('has-error');
+                        }
+                        resetOutputs();
+                    }, 3000);
+                    return;
+                }
+            }
+
+            const decryptedBytes = detectedHasPassword ? xorCipher(detectedEncMsgBytes, password) : detectedEncMsgBytes;
+            const decryptedText = new TextDecoder().decode(decryptedBytes);
+
+            resetOutputs();
+
+            headerElement.innerHTML = '<span style="color: var(--success-color);">✓ Decrypted Message Extracted</span>';
+            resultText.innerText = decryptedText;
+            resultText.style.color = '';
+            decryptOutput.style.display = 'flex';
+            decryptOutput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        const dropzone = document.getElementById('media-dropzone');
+        const fileInput = document.getElementById('media-input');
+
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('dragover');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('dragover');
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                fileInput.files = e.dataTransfer.files;
+                previewUpload(fileInput);
+            }
+        });
+
+        const canvas = document.getElementById('pixelCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+        let particles = [];
+
+        let mouse = { x: null, y: null, targetX: null, targetY: null };
+        let activeScale = 1;
+        let targetScale = 1;
+
+        let currentRotX = 0;
+        let currentRotY = 0;
+        let targetRotX = 0;
+        let targetRotY = 0;
+
+        let globalSpeed = 0.5;
+        let baseSpeedTarget = 0.5;
+        let colorTheme = 255;
+        let colorThemeTarget = 255;
+
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) {
+                const tag = e.target.tagName;
+                if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
+                    e.preventDefault();
+                }
+            }
+
+            if (e.key === 'Enter') {
+                const tag = e.target.tagName;
+                const id = e.target.id;
+                if (tag === 'INPUT') {
+                    if (id === 'stego-password' || id === 'stego-hint') {
+                        encryptCarrier();
+                    } else if (id === 'decode-password') {
+                        decryptCarrier();
+                    }
+                }
+            }
+        });
+
+        document.addEventListener('selectstart', (e) => {
+            const tag = e.target.tagName;
+            if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('copy', (e) => {
+            const tag = e.target.tagName;
+            if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
+                e.preventDefault();
+            }
+        });
+        document.addEventListener('paste', (e) => {
+            const tag = e.target.tagName;
+            if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
+                e.preventDefault();
+            }
+        });
+
+        ['stego-msg', 'stego-password', 'stego-hint', 'text-cover-input', 'decode-password'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                const clearError = () => {
+                    if (el.value.trim() !== '') {
+                        const group = el.closest('.form-group');
+                        if (group) group.classList.remove('has-error');
+                    }
+                };
+                el.addEventListener('input', clearError);
+                el.addEventListener('blur', clearError);
+            }
+        });
+
+        const mInput = document.getElementById('media-input');
+        if (mInput) {
+            mInput.addEventListener('change', () => {
+                if (mInput.files && mInput.files.length > 0) {
+                    const dropzone = document.getElementById('media-dropzone');
+                    if (dropzone) dropzone.classList.remove('invalid-dropzone');
+                }
+            });
+        }
+
+        document.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            document.documentElement.classList.toggle('light-mode');
+            const isLight = document.documentElement.classList.contains('light-mode');
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        });
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 0.8;
+                this.vy = (Math.random() - 0.5) * 0.8;
+                this.size = Math.random() * 1.5 + 0.6;
+                this.baseAlpha = Math.random() * 0.5 + 0.25;
+                this.alpha = this.baseAlpha;
+                this.hueOffset = (Math.random() - 0.5) * 35;
+                this.angle = Math.random() * Math.PI * 2;
+                this.spinSpeed = (Math.random() - 0.5) * 0.008;
+            }
+
+            draw(isLightMode) {
+                const currentHue = colorTheme + this.hueOffset;
+                const lightness = isLightMode ? '55%' : '88%';
+                ctx.fillStyle = `hsla(${currentHue}, 100%, ${lightness}, ${this.alpha})`;
+                ctx.fillRect(this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            const particleCount = Math.floor((width * height) / 3800);
+            const countLimit = Math.min(particleCount, 320);
+            for (let i = 0; i < countLimit; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function drawConnections(isLightMode) {
+            const maxDistance = 110;
+            ctx.lineWidth = 0.6;
+            const strokeColor = isLightMode ? 'rgba(109, 40, 217,' : 'rgba(139, 92, 246,';
+
+            for (let a = 0; a < particles.length; a++) {
+                for (let b = a + 1; b < particles.length; b++) {
+                    const dx = particles[a].x - particles[b].x;
+                    const dy = particles[a].y - particles[b].y;
+                    const distance = Math.hypot(dx, dy);
+
+                    if (distance < maxDistance) {
+                        const opacity = (1 - (distance / maxDistance)) * 0.12;
+                        ctx.strokeStyle = `${strokeColor} ${opacity})`;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[a].x, particles[a].y);
+                        ctx.lineTo(particles[b].x, particles[b].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        function animate() {
+            const isLightMode = document.documentElement.classList.contains('light-mode');
+
+            ctx.fillStyle = isLightMode ? 'rgba(246, 246, 249, 0.22)' : 'rgba(3, 3, 3, 0.22)';
+            ctx.fillRect(0, 0, width, height);
+
+            globalSpeed += (baseSpeedTarget - globalSpeed) * 0.05;
+            colorTheme += (colorThemeTarget - colorTheme) * 0.05;
+
+            particles.forEach(p => {
+                p.draw(isLightMode);
+            });
+
+            drawConnections(isLightMode);
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            initParticles();
+        });
+
+        initParticles();
+        animate();
+    </script>
+</body>
+</html>

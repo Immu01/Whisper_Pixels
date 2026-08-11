@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light') {
+                document.documentElement.classList.add('light-mode');
+            } else {
+                document.documentElement.classList.remove('light-mode');
+            }
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <title>Whisper Pixels</title>
+    <meta name="description" content="An interactive, scroll-snapped 3D showroom showcasing secure steganography algorithms.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100;200;300;400;500;600&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #030303;
+            --primary-glow: rgba(99, 102, 241, 0.08);
+            --secondary-glow: rgba(168, 85, 247, 0.08);
+            --text-main: rgba(255, 255, 255, 0.95);
+            --text-muted: rgba(255, 255, 255, 0.45);
+            --accent: #8b5cf6;
+            --accent-rgb: 139, 92, 246;
+
+            --card-bg: rgba(10, 10, 10, 0.05);
+            --card-border: rgba(255, 255, 255, 0.07);
+            --card-shadow-black: rgba(0, 0, 0, 0.6);
+            --card-shadow-purple: rgba(139, 92, 246, 0.38);
+            --card-highlight: rgba(255, 255, 255, 0.08);
+
+            --btn-bg: linear-gradient(135deg, #ffffff 0%, #e2e2e2 100%);
+            --btn-text: #000000;
+            --btn-hover-bg: #ffffff;
+            --btn-hover-text: #000000;
+            --btn-hover-shadow: rgba(255, 255, 255, 0.4);
+
+            --code-bg: rgba(0, 0, 0, 0.3);
+        }
+
+        html.light-mode {
+            --bg-color: #f6f6f9;
+            --primary-glow: rgba(99, 102, 241, 0.06);
+            --secondary-glow: rgba(168, 85, 247, 0.06);
+            --text-main: #0c0c0e;
+            --text-muted: #5a5a62;
+            --accent: #6d28d9;
+            --accent-rgb: 109, 40, 217;
+
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --card-border: rgba(255, 255, 255, 0.4);
+            --card-shadow-black: rgba(0, 0, 0, 0.03);
+            --card-shadow-purple: rgba(109, 40, 217, 0.22);
+            --card-highlight: rgba(255, 255, 255, 0.5);
+
+            --btn-bg: linear-gradient(135deg, #0d0d0f 0%, #212124 100%);
+            --btn-text: #ffffff;
+            --btn-hover-bg: #000000;
+            --btn-hover-text: #ffffff;
+            --btn-hover-shadow: rgba(0, 0, 0, 0.2);
+
+            --code-bg: rgba(255, 255, 255, 0.6);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            transition: opacity 0.5s ease,
+                        background-color 0.8s cubic-bezier(0.25, 1, 0.5, 1),
+                        color 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        body.page-exit {
+            opacity: 0;
+        }
+
+        canvas#pixelCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .ambient-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 2;
+            pointer-events: none;
+            will-change: transform;
+        }
+
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(140px);
+            opacity: 0.4;
+            transform: translate3d(0,0,0);
+            will-change: transform;
+            animation: floatBlob 25s infinite alternate ease-in-out;
+            transition: background 0.8s ease;
+        }
+
+        .blob-1 {
+            top: -15%;
+            left: -15%;
+            width: 55vw;
+            height: 55vw;
+            background: var(--primary-glow);
+        }
+
+        .blob-2 {
+            bottom: -15%;
+            right: -15%;
+            width: 55vw;
+            height: 55vw;
+            background: var(--secondary-glow);
+            animation-delay: -8s;
+        }
+
+        @keyframes floatBlob {
+            0% { transform: translate3d(0, 0, 0) scale(1); }
+            100% { transform: translate3d(5vw, 5vh, 0) scale(1.1); }
+        }
+
+        .app-wrapper {
+            position: relative;
+            z-index: 3;
+            width: 100%;
+            height: 100%;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+        }
+
+        .app-wrapper.scroll-locked {
+            overflow-y: hidden !important;
+        }
+
+        .app-wrapper.scroll-locked ~ #dotNav {
+            pointer-events: none !important;
+            opacity: 0 !important;
+        }
+
+        .slide {
+            scroll-snap-align: start;
+            scroll-snap-stop: always;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            padding: 4rem 6rem;
+            transform-style: preserve-3d;
+        }
+
+        .slide .info-card, .slide .animation-card {
+            opacity: 0;
+            transform: translateY(40px) translateZ(0);
+            transition: opacity 1.4s cubic-bezier(0.16, 1, 0.3, 1),
+                        transform 1.4s cubic-bezier(0.16, 1, 0.3, 1),
+                        background 0.8s ease,
+                        border-color 0.8s ease,
+                        box-shadow 0.8s ease;
+        }
+
+        .slide.active .info-card, .slide.active .animation-card {
+            opacity: 1;
+            transform: translateY(0) translateZ(10px);
+        }
+
+        .slide-content {
+            width: 100%;
+            max-width: 1200px;
+            display: grid;
+            grid-template-columns: 1fr 1.1fr;
+            gap: 4rem;
+            align-items: center;
+            transform-style: preserve-3d;
+        }
+
+        .glass-panel {
+            padding: 3rem;
+            border-radius: 24px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            box-shadow: 0 40px 80px var(--card-shadow-black),
+                        0 0 50px var(--card-shadow-purple),
+                        inset 0 1px 0 var(--card-highlight);
+            backdrop-filter: blur(3px);
+            -webkit-backdrop-filter: blur(3px);
+            transform-style: preserve-3d;
+            will-change: transform;
+        }
+
+        .hero-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 90%;
+            text-align: center;
+            opacity: 1 !important;
+            transform: translateY(0) translateZ(0) !important;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 4.5rem;
+            font-weight: 200;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            transform-style: preserve-3d;
+            filter: drop-shadow(0 0 30px rgba(255, 255, 255, 0.05));
+        }
+
+        html.light-mode .logo {
+            filter: drop-shadow(0 10px 25px rgba(0, 0, 0, 0.12));
+        }
+
+        .word {
+            display: flex;
+            align-items: center;
+            transform-style: preserve-3d;
+        }
+
+        .letter {
+            display: inline-block;
+            opacity: 0;
+            filter: blur(12px);
+            transform: translateZ(120px) rotateX(-90deg) scale(0.75);
+            animation: reveal3DLetter 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            font-weight: 300;
+            color: var(--text-main);
+            transition: color 0.8s ease;
+        }
+
+        .word:nth-child(1) .letter { animation-delay: 0.3s; }
+        .word:nth-child(3) .letter { animation-delay: 0.3s; }
+
+        .suffix {
+            display: inline-block;
+            max-width: 0;
+            opacity: 0;
+            overflow: hidden;
+            white-space: nowrap;
+            color: var(--text-main);
+            transform: translateZ(70px);
+            animation: reveal3DSuffix 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            animation-delay: 2.2s;
+            transition: color 0.8s ease;
+        }
+
+        .space {
+            display: inline-block;
+            width: 0;
+            opacity: 0;
+            animation: reveal3DSpace 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            animation-delay: 2.2s;
+        }
+
+        .tagline {
+            font-size: 1.15rem;
+            font-weight: 300;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin-top: 1.8rem;
+            opacity: 0;
+            transform: translateZ(40px) translateY(12px);
+            animation: reveal3DTagline 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            animation-delay: 3.8s;
+            transition: color 0.8s ease;
+        }
+
+        .btn-launch {
+            margin-top: 2.5rem;
+            background: var(--btn-bg);
+            border: none;
+            color: var(--btn-text);
+            padding: 1rem 2.8rem;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            cursor: pointer;
+            box-shadow: 0 10px 20px var(--card-shadow-black),
+                        0 0 25px var(--card-shadow-purple);
+            opacity: 0;
+            transform: translateZ(20px) translateY(10px);
+            animation: fadeInButton 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            animation-delay: 4.4s;
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1),
+                        background 0.8s cubic-bezier(0.25, 1, 0.5, 1),
+                        color 0.8s cubic-bezier(0.25, 1, 0.5, 1),
+                        box-shadow 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        .btn-launch:hover {
+            transform: translateZ(30px) translateY(-3px) scale(1.02);
+            box-shadow: 0 15px 30px var(--card-shadow-purple),
+                        0 0 15px var(--btn-hover-shadow);
+            background: var(--btn-hover-bg);
+            color: var(--btn-hover-text);
+        }
+
+        .info-card h2 {
+            font-size: 2.2rem;
+            font-weight: 300;
+            letter-spacing: 0.05em;
+            margin-bottom: 1.5rem;
+            text-transform: uppercase;
+            background: linear-gradient(135deg, var(--text-main), var(--text-muted));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .info-card p {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: var(--text-muted);
+            font-weight: 300;
+            margin-bottom: 1.5rem;
+        }
+
+        .info-card ul {
+            list-style: none;
+            padding-left: 0.5rem;
+        }
+
+        .info-card li {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: var(--text-muted);
+            margin-bottom: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .info-card li::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 4px;
+            background-color: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 6px var(--accent);
+        }
+
+        .animation-card {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 380px;
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .pipeline-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 500px;
+            position: relative;
+        }
+
+        .pipe-node {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 1.5rem;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            width: 120px;
+            position: relative;
+            z-index: 2;
+            transition: all 0.5s ease;
+        }
+
+        .pipe-node .node-icon {
+            font-size: 2rem;
+            filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.1));
+        }
+
+        .pipe-node .node-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        .pipe-join {
+            font-size: 1.5rem;
+            color: var(--text-muted);
+        }
+
+        .pipe-arrow {
+            font-size: 1.5rem;
+            color: var(--text-muted);
+            position: relative;
+        }
+
+        .pipe-node.highlight {
+            border-color: rgba(var(--accent-rgb), 0.3);
+            box-shadow: 0 0 20px rgba(var(--accent-rgb), 0.1);
+        }
+
+        .flow-dot {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent);
+            top: 50%;
+            left: 20%;
+            z-index: 3;
+            opacity: 0;
+        }
+
+        .slide.active .flow-dot-1 {
+            animation: flowDotOne 3s infinite linear;
+        }
+
+        .slide.active .flow-dot-2 {
+            animation: flowDotTwo 3s infinite linear;
+        }
+
+        @keyframes flowDotOne {
+            0% { left: 10%; top: 30%; opacity: 0; }
+            10% { opacity: 1; }
+            50% { left: 45%; top: 46%; opacity: 1; }
+            60%, 100% { left: 75%; top: 46%; opacity: 0; }
+        }
+
+        @keyframes flowDotTwo {
+            0%, 20% { left: 10%; top: 70%; opacity: 0; }
+            30% { opacity: 1; }
+            50% { left: 45%; top: 46%; opacity: 1; }
+            60%, 100% { left: 75%; top: 46%; opacity: 0; }
+        }
+
+        .slide.active .pipe-node.highlight {
+            animation: stegoPulse 3s infinite ease-in-out;
+        }
+
+        @keyframes stegoPulse {
+            0%, 48% { transform: scale(1); border-color: rgba(var(--accent-rgb), 0.2); }
+            55% { transform: scale(1.08); border-color: rgba(var(--accent-rgb), 0.8); box-shadow: 0 0 25px rgba(var(--accent-rgb), 0.4); }
+            70%, 100% { transform: scale(1); border-color: rgba(var(--accent-rgb), 0.2); }
+        }
+
+        .pixel-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            width: 280px;
+            height: 280px;
+        }
+
+        .pixel-block {
+            border-radius: 12px;
+            background-color: var(--color);
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.5s ease;
+        }
+
+        .pixel-block .pixel-val {
+            position: absolute;
+            bottom: 6px;
+            font-size: 0.52rem;
+            font-family: 'Fira Code', monospace;
+            color: rgba(255,255,255,0.85);
+            background: rgba(0, 0, 0, 0.6);
+            padding: 2px 4px;
+            border-radius: 4px;
+            letter-spacing: -0.02em;
+        }
+
+        .bit-flow {
+            position: absolute;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            color: var(--accent);
+            opacity: 0;
+            z-index: 10;
+        }
+
+        .slide.active .bit-flow {
+            animation: flowBitIntoPixel 4s infinite cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        @keyframes flowBitIntoPixel {
+            0% { transform: translateY(80px) scale(0.8); opacity: 0; }
+            20% { transform: translateY(0) scale(1.2); opacity: 1; }
+            40% { transform: scale(1); opacity: 1; }
+            55% { transform: translate(-30px, -50px) scale(0.6); opacity: 0; }
+            100% { opacity: 0; }
+        }
+
+        .slide.active .pixel-block:nth-child(1) {
+            animation: pixelShift 4s infinite ease-in-out;
+        }
+
+        @keyframes pixelShift {
+            0%, 48% { filter: brightness(1); }
+            52%, 90% { filter: brightness(1.15); border-color: #fff; }
+            100% { filter: brightness(1); }
+        }
+
+        .video-strip {
+            display: flex;
+            gap: 15px;
+            padding: 10px;
+            position: relative;
+            width: 100%;
+            max-width: 100%;
+            overflow: hidden;
+            justify-content: center;
+        }
+
+        .video-frame {
+            min-width: 110px;
+            height: 150px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px dashed rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: all 0.5s ease;
+        }
+
+        .video-frame .frame-num {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .video-frame .frame-content {
+            flex-grow: 1;
+            margin: 10px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .frame-content::before {
+            content: '';
+            width: 25px;
+            height: 25px;
+            border: 1px solid var(--text-muted);
+            opacity: 0.3;
+            transform: rotate(45deg);
+            animation: spinShape 6s infinite linear;
+        }
+
+        @keyframes spinShape {
+            to { transform: rotate(405deg); }
+        }
+
+        .frame-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 12px;
+            background: transparent;
+            z-index: 2;
+            pointer-events: none;
+            transition: all 0.5s ease;
+        }
+
+        .vector-pulse {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background-color: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+            border-radius: 50%;
+            opacity: 0;
+        }
+
+        .slide.active .vector-pulse-1 {
+            animation: injectVector 4s infinite ease-in-out;
+        }
+
+        .slide.active .vector-pulse-2 {
+            animation: injectVector 4s infinite ease-in-out;
+            animation-delay: 0.6s;
+        }
+
+        @keyframes injectVector {
+            0% { top: -20px; left: 50%; opacity: 0; transform: scale(0.5); }
+            30% { top: 50%; left: 50%; opacity: 1; transform: scale(1.3); }
+            50% { opacity: 1; filter: blur(0); }
+            70%, 100% { opacity: 0; transform: scale(1.6); }
+        }
+
+        .slide.active .video-frame:nth-child(2) {
+            animation: frameFlash 4s infinite ease-in-out;
+        }
+        .slide.active .video-frame:nth-child(4) {
+            animation: frameFlash 4s infinite ease-in-out;
+            animation-delay: 0.6s;
+        }
+
+        @keyframes frameFlash {
+            0%, 28% { border-color: rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); }
+            32%, 70% { border-color: var(--accent); background: rgba(var(--accent-rgb), 0.05); }
+            80%, 100% { border-color: rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); }
+        }
+
+        .audio-panel {
+            width: 100%;
+            max-width: 440px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .canvas-container {
+            width: 100%;
+            height: 180px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            background: rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .canvas-container canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .audio-controls {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            font-family: 'Fira Code', monospace;
+            padding: 0 5px;
+        }
+
+        .freq-text {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .freq-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: var(--accent);
+            box-shadow: 0 0 6px var(--accent);
+        }
+
+        .slide.active .freq-dot {
+            animation: blinkRed 1s infinite alternate;
+        }
+
+        @keyframes blinkRed {
+            from { opacity: 0.3; }
+            to { opacity: 1; }
+        }
+
+        .text-terminal {
+            width: 100%;
+            max-width: 440px;
+            border-radius: 16px;
+            background: var(--code-bg);
+            border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            font-family: 'Fira Code', monospace;
+            overflow: hidden;
+            text-align: left;
+            transition: background 0.8s ease;
+        }
+
+        .terminal-header {
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .terminal-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ef4444;
+        }
+
+        .terminal-dot:nth-child(2) { background: #f59e0b; }
+        .terminal-dot:nth-child(3) { background: #10b981; }
+
+        .terminal-title {
+            margin-left: 10px;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .terminal-body {
+            padding: 1.8rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .terminal-text {
+            font-size: 0.9rem;
+            line-height: 1.8;
+            color: var(--text-main);
+            transition: color 0.8s ease;
+        }
+
+        .stego-space {
+            display: inline-block;
+            position: relative;
+            background: transparent;
+            margin: 0 2px;
+            width: 3px;
+            height: 12px;
+            transition: all 0.5s ease;
+        }
+
+        .slide.active .stego-space {
+            animation: highlightSpaces 4s infinite steps(1);
+        }
+
+        .slide.active .stego-space::after {
+            content: '\u200B';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.6rem;
+            color: var(--accent);
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        @keyframes highlightSpaces {
+            0%, 100% { border-bottom: 2px solid transparent; }
+            10%, 90% { border-bottom: 2px solid var(--accent); background: rgba(var(--accent-rgb), 0.15); }
+        }
+
+        .extracted-panel {
+            padding: 12px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.4);
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .extracted-bits::after {
+            content: "0000 0000";
+            color: var(--accent);
+            font-weight: 500;
+            transition: color 0.8s ease;
+        }
+
+        .slide.active .extracted-bits::after {
+            animation: revealTextBits 4s infinite steps(1);
+        }
+
+        @keyframes revealTextBits {
+            0%, 20% { content: "0000 0000"; opacity: 0.25; }
+            21%, 55% { content: "0100 1000"; opacity: 1; }
+            56%, 100% { content: "0100 1000 0100 1001"; opacity: 1; }
+        }
+
+        .decoded-char::after {
+            content: "➔ \"\"";
+            margin-left: 8px;
+            font-weight: 500;
+            color: var(--text-main);
+            transition: color 0.8s ease;
+        }
+
+        .slide.active .decoded-char::after {
+            animation: decodeChar 4s infinite steps(1);
+        }
+
+        @keyframes decodeChar {
+            0%, 20% { content: "➔ \"\""; opacity: 0.25; }
+            21%, 55% { content: "➔ \"H\""; opacity: 1; }
+            56%, 100% { content: "➔ \"HI\""; opacity: 1; }
+        }
+
+        .app-wrapper {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .app-wrapper::-webkit-scrollbar {
+            display: none;
+        }
+
+        .scroll-arrow {
+            position: absolute;
+            bottom: 2.5rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 10;
+            color: var(--text-muted);
+            transition: opacity 1.5s cubic-bezier(0.16, 1, 0.3, 1),
+                        transform 1.5s cubic-bezier(0.16, 1, 0.3, 1),
+                        color 0.4s ease;
+        }
+
+        .scroll-arrow svg {
+            display: block;
+            width: 32px;
+            height: 32px;
+            stroke-width: 1.2px;
+            transition: transform 0.4s ease;
+        }
+
+        .scroll-arrow:hover {
+            color: var(--text-main);
+        }
+
+        .scroll-arrow:hover svg {
+            transform: translateY(2px);
+        }
+
+        .scroll-arrow.visible {
+            opacity: 0.65;
+            transform: translateX(-50%) translateY(0);
+            pointer-events: auto;
+            animation: bounceArrow 2s infinite ease-in-out;
+        }
+
+        .scroll-arrow.visible:hover {
+            opacity: 1;
+        }
+
+        @keyframes bounceArrow {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(6px); }
+        }
+
+        @keyframes reveal3DLetter {
+            to { opacity: 1; filter: blur(0); transform: translateZ(0) rotateX(0deg) scale(1); }
+        }
+
+        @keyframes reveal3DSuffix {
+            to { max-width: 300px; opacity: 1; transform: translateZ(0); }
+        }
+
+        @keyframes reveal3DSpace {
+            to { width: 0.4em; opacity: 1; }
+        }
+
+        @keyframes reveal3DTagline {
+            to { opacity: 1; transform: translateZ(0) translateY(0); }
+        }
+
+        @keyframes fadeInButton {
+            to { opacity: 1; transform: translateZ(20px) translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ambient-bg">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+
+    <canvas id="pixelCanvas"></canvas>
+
+    <div class="app-wrapper scroll-locked" id="appWrapper">
+
+        <section class="slide active" id="slide-1">
+            <main class="hero-container tilt-enabled" id="heroCard">
+                <h1 class="logo">
+                    <span class="word">
+                        <span class="letter">W</span><span class="suffix">hisper</span>
+                    </span>
+                    <span class="space">&nbsp;</span>
+                    <span class="word">
+                        <span class="letter">P</span><span class="suffix">ixels</span>
+                    </span>
+                </h1>
+                <p class="tagline">What you see isn’t all you get</p>
+                <button class="btn-launch" onclick="navigateToStudio()">Launch Studio</button>
+            </main>
+
+            <div class="scroll-arrow" id="scrollArrow" onclick="scrollToSlide(1)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 5v14M19 12l-7 7-7-7"/>
+                </svg>
+            </div>
+        </section>
+
+        <section class="slide" id="slide-2">
+            <div class="slide-content">
+                <div class="info-card">
+                    <h2>Ecosystem Overview</h2>
+                    <p>
+                        Whisper Pixels is a comprehensive web platform designed to facilitate secure, covert communication using the principle of steganography.
+                    </p>
+                    <p>
+                        The website allows users to seamlessly hide confidential information within seemingly ordinary digital files across multiple media formats, including images, video, audio, and text.
+                    </p>
+                </div>
+                <div class="animation-card glass-panel">
+                    <div class="pipeline-container">
+                        <div class="pipe-node" id="node-cover">
+                            <span class="node-icon">📄</span>
+                            <span class="node-title">Cover File</span>
+                        </div>
+                        <div class="pipe-join">+</div>
+                        <div class="pipe-node" id="node-msg">
+                            <span class="node-icon">🔑</span>
+                            <span class="node-title">Secret Data</span>
+                        </div>
+                        <div class="pipe-arrow">➔</div>
+                        <div class="pipe-node highlight" id="node-stego">
+                            <span class="node-icon">🔒</span>
+                            <span class="node-title">Stego Carrier</span>
+                        </div>
+                        <div class="flow-dot flow-dot-1"></div>
+                        <div class="flow-dot flow-dot-2"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="slide" id="slide-3">
+            <div class="slide-content">
+                <div class="info-card">
+                    <h2>Image Steganography</h2>
+                    <p>
+                        Image steganography conceals secret data directly within the pixels of a digital picture without noticeably changing its appearance. It typically works by slightly altering the color values of individual pixels, tucking the secret message into parts of the image to which the human eye is least sensitive. To any casual observer, the resulting image looks absolutely identical to the original file.
+                    </p>
+                    <ul>
+                        <li>Least Significant Bit (LSB) pixel manipulation</li>
+                        <li>Color channel and frequency domain modifications</li>
+                        <li>Visually identical to the original image file</li>
+                    </ul>
+                </div>
+                <div class="animation-card glass-panel">
+                    <div class="pixel-grid">
+                        <div class="pixel-block" style="--color: #3b82f6;"><div class="pixel-val">rgb(59,130,246)</div></div>
+                        <div class="pixel-block" style="--color: #8b5cf6;"><div class="pixel-val">rgb(139,92,246)</div></div>
+                        <div class="pixel-block" style="--color: #ec4899;"><div class="pixel-val">rgb(236,72,153)</div></div>
+                        <div class="pixel-block" style="--color: #10b981;"><div class="pixel-val">rgb(16,185,129)</div></div>
+                        <div class="pixel-block" style="--color: #f59e0b;"><div class="pixel-val">rgb(245,158,11)</div></div>
+                        <div class="pixel-block" style="--color: #ef4444;"><div class="pixel-val">rgb(239,68,68)</div></div>
+                        <div class="pixel-block" style="--color: #14b8a6;"><div class="pixel-val">rgb(20,184,166)</div></div>
+                        <div class="pixel-block" style="--color: #6366f1;"><div class="pixel-val">rgb(99,102,241)</div></div>
+                        <div class="pixel-block" style="--color: #a855f7;"><div class="pixel-val">rgb(168,85,247)</div></div>
+                    </div>
+                    <div class="bit-flow">01001001</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="slide" id="slide-4">
+            <div class="slide-content">
+                <div class="info-card">
+                    <h2>Video Steganography</h2>
+                    <p>
+                        Video steganography embeds covert messages across the moving frames and synchronized audio tracks of a digital video file. Because a video is essentially a rapid sequence of images combined with sound, data can be scattered randomly across thousands of frames or hidden within the motion patterns. This vast amount of cover data easily swallows the secret message without causing any visible glitches or lag.
+                    </p>
+                    <ul>
+                        <li>Spatial frame distribution and motion vector embedding</li>
+                        <li>Combined audio track and visual layer manipulation</li>
+                        <li>Plays smoothly with no visual or structural glitches</li>
+                    </ul>
+                </div>
+                <div class="animation-card glass-panel">
+                    <div class="video-strip">
+                        <div class="video-frame">
+                            <span class="frame-num">FRM 01</span>
+                            <div class="frame-content"></div>
+                            <div class="frame-overlay"></div>
+                        </div>
+                        <div class="video-frame">
+                            <span class="frame-num">FRM 02</span>
+                            <div class="frame-content"></div>
+                            <div class="frame-overlay"></div>
+                            <div class="vector-pulse vector-pulse-1"></div>
+                        </div>
+                        <div class="video-frame">
+                            <span class="frame-num">FRM 03</span>
+                            <div class="frame-content"></div>
+                            <div class="frame-overlay"></div>
+                        </div>
+                        <div class="video-frame">
+                            <span class="frame-num">FRM 04</span>
+                            <div class="frame-content"></div>
+                            <div class="frame-overlay"></div>
+                            <div class="vector-pulse vector-pulse-2"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="slide" id="slide-5">
+            <div class="slide-content">
+                <div class="info-card">
+                    <h2>Audio Steganography</h2>
+                    <p>
+                        Audio steganography hides secret information within the sound waves of a digital audio track while maintaining its original acoustic quality. This is often achieved by embedding data into imperceptible background noise or by slightly shifting the phase of the sound wave itself. Anyone listening to the track will hear only the normal song or recording, completely unaware of the hidden payload.
+                    </p>
+                    <ul>
+                        <li>Phase shifting and inaudible frequency masking</li>
+                        <li>Least Significant Bit (LSB) audio wave encoding</li>
+                        <li>Maintains flawless original playback and sound quality</li>
+                    </ul>
+                </div>
+                <div class="animation-card glass-panel">
+                    <div class="audio-panel">
+                        <div class="canvas-container">
+                            <canvas id="audioWaveCanvas"></canvas>
+                        </div>
+                        <div class="audio-controls">
+                            <div class="freq-text">Carrier wave (44.1 kHz)</div>
+                            <div class="freq-text"><span class="freq-dot"></span>Stego Channel Active</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="slide" id="slide-6">
+            <div class="slide-content">
+                <div class="info-card">
+                    <h2>Text Steganography</h2>
+                    <p>
+                        Text steganography is the technique of hiding a secret message inside ordinary, everyday text so that nobody even suspects it exists. It often works by inserting special "zero-width" characters into the text, which computers can detect but human eyes cannot see. Data can also be hidden by adding unnoticeable extra blank spaces between words or at the ends of sentences to represent hidden binary codes.
+                    </p>
+                    <ul>
+                        <li>Zero-width space code embedding</li>
+                        <li>Whitespace and punctuation variation keys</li>
+                        <li>Indistinguishable in standard word editors</li>
+                    </ul>
+                </div>
+                <div class="animation-card glass-panel">
+                    <div class="text-terminal">
+                        <div class="terminal-header">
+                            <div class="terminal-dot"></div>
+                            <div class="terminal-dot"></div>
+                            <div class="terminal-dot"></div>
+                            <span class="terminal-title">Decoder Console</span>
+                        </div>
+                        <div class="terminal-body">
+                            <p class="terminal-text">
+                                Whisper<span class="stego-space"></span>Pixels<span class="stego-space"></span>hides<span class="stego-space"></span>data.
+                            </p>
+                            <div class="extracted-panel">
+                                <span>Binary:</span>
+                                <span class="extracted-bits"></span>
+                                <span class="decoded-char"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        const canvas = document.getElementById('pixelCanvas');
+        const ctx = canvas.getContext('2d');
+        const appWrapper = document.getElementById('appWrapper');
+        const slides = document.querySelectorAll('.slide');
+
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+        let particles = [];
+
+        let mouse = { x: null, y: null, targetX: null, targetY: null };
+        let activeScale = 1;
+        let targetScale = 1;
+
+        let currentRotX = 0;
+        let currentRotY = 0;
+        let targetRotX = 0;
+        let targetRotY = 0;
+
+        let globalSpeed = 0.5;
+        let baseSpeedTarget = 0.5;
+        let colorTheme = 255;
+        let colorThemeTarget = 255;
+        let activeSlideIndex = 0;
+
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) {
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('selectstart', (e) => {
+            e.preventDefault();
+        });
+
+        document.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            document.documentElement.classList.toggle('light-mode');
+            const isLight = document.documentElement.classList.contains('light-mode');
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        });
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 0.8;
+                this.vy = (Math.random() - 0.5) * 0.8;
+                this.size = Math.random() * 1.5 + 0.6;
+                this.baseAlpha = Math.random() * 0.5 + 0.25;
+                this.alpha = this.baseAlpha;
+                this.hueOffset = (Math.random() - 0.5) * 35;
+                this.angle = Math.random() * Math.PI * 2;
+                this.spinSpeed = (Math.random() - 0.5) * 0.008;
+            }
+
+            update() {
+                this.angle += this.spinSpeed;
+                const waveX = Math.cos(this.angle) * 0.15;
+                const waveY = Math.sin(this.angle) * 0.15;
+
+                this.vx += waveX;
+                this.vy += waveY;
+
+                if (mouse.x !== null && mouse.y !== null) {
+                    const dx = mouse.x - this.x;
+                    const dy = mouse.y - this.y;
+                    const dist = Math.hypot(dx, dy);
+                    const pushRadius = 140;
+
+                    if (dist < pushRadius) {
+                        const force = (pushRadius - dist) / pushRadius;
+                        const angle = Math.atan2(dy, dx);
+                        this.vx -= Math.cos(angle) * force * 0.12;
+                        this.vy -= Math.sin(angle) * force * 0.12;
+                        this.alpha += (0.98 - this.alpha) * 0.1;
+                    } else {
+                        this.alpha += (this.baseAlpha - this.alpha) * 0.05;
+                    }
+                } else {
+                    this.alpha += (this.baseAlpha - this.alpha) * 0.05;
+                }
+
+                this.vx *= 0.97;
+                this.vy *= 0.97;
+
+                this.x += this.vx * globalSpeed;
+                this.y += this.vy * globalSpeed;
+
+                if (this.x < 0) this.x = width;
+                if (this.x > width) this.x = 0;
+                if (this.y < 0) this.y = height;
+                if (this.y > height) this.y = 0;
+            }
+
+            draw(isLightMode) {
+                const currentHue = colorTheme + this.hueOffset;
+                const lightness = isLightMode ? '55%' : '88%';
+                ctx.fillStyle = `hsla(${currentHue}, 100%, ${lightness}, ${this.alpha})`;
+                ctx.fillRect(this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            const particleCount = Math.floor((width * height) / 3800);
+            const countLimit = Math.min(particleCount, 320);
+            for (let i = 0; i < countLimit; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function drawConnections(isLightMode) {
+            const maxDistance = 110;
+            ctx.lineWidth = 0.6;
+            const strokeColor = isLightMode ? 'rgba(109, 40, 217,' : 'rgba(139, 92, 246,';
+
+            for (let a = 0; a < particles.length; a++) {
+                for (let b = a + 1; b < particles.length; b++) {
+                    const dx = particles[a].x - particles[b].x;
+                    const dy = particles[a].y - particles[b].y;
+                    const distance = Math.hypot(dx, dy);
+
+                    if (distance < maxDistance) {
+                        const opacity = (1 - (distance / maxDistance)) * 0.12;
+                        ctx.strokeStyle = `${strokeColor} ${opacity})`;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[a].x, particles[a].y);
+                        ctx.lineTo(particles[b].x, particles[b].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        const getActiveCards = () => {
+            return document.querySelectorAll('.slide.active .tilt-enabled');
+        };
+
+        function animate() {
+            const isLightMode = document.documentElement.classList.contains('light-mode');
+
+            ctx.fillStyle = isLightMode ? 'rgba(246, 246, 249, 0.22)' : 'rgba(3, 3, 3, 0.22)';
+            ctx.fillRect(0, 0, width, height);
+
+            globalSpeed += (baseSpeedTarget - globalSpeed) * 0.05;
+            colorTheme += (colorThemeTarget - colorTheme) * 0.05;
+
+            particles.forEach(p => {
+                if (activeSlideIndex === 0) {
+                    p.update();
+                }
+                p.draw(isLightMode);
+            });
+
+            drawConnections(isLightMode);
+
+            if (mouse.targetX !== null && mouse.targetY !== null) {
+                if (mouse.x === null) {
+                    mouse.x = mouse.targetX;
+                    mouse.y = mouse.targetY;
+                } else {
+                    mouse.x += (mouse.targetX - mouse.x) * 0.08;
+                    mouse.y += (mouse.targetY - mouse.y) * 0.08;
+                }
+            }
+
+            currentRotX += (targetRotX - currentRotX) * 0.06;
+            currentRotY += (targetRotY - currentRotY) * 0.06;
+            activeScale += (targetScale - activeScale) * 0.06;
+
+            const activeCards = getActiveCards();
+            activeCards.forEach(card => {
+                card.style.transform = `perspective(1200px) rotateX(${currentRotX}deg) rotateY(${currentRotY}deg) scale(${activeScale}) translateZ(10px)`;
+            });
+
+            drawAudioOscilloscope(isLightMode);
+
+            requestAnimationFrame(animate);
+        }
+
+        const audioCanvas = document.getElementById('audioWaveCanvas');
+        const audioCtx = audioCanvas.getContext('2d');
+        let audioWaveTime = 0;
+
+        function drawAudioOscilloscope(isLightMode) {
+
+            const slide5 = document.getElementById('slide-5');
+            if (!slide5.classList.contains('active')) return;
+
+            const w = audioCanvas.width = audioCanvas.parentNode.clientWidth;
+            const h = audioCanvas.height = audioCanvas.parentNode.clientHeight;
+
+            audioCtx.clearRect(0, 0, w, h);
+
+            audioCtx.beginPath();
+            audioCtx.lineWidth = 2.5;
+            audioCtx.strokeStyle = isLightMode ? '#6d28d9' : '#8b5cf6';
+
+            audioWaveTime += 0.05;
+
+            for (let x = 0; x < w; x++) {
+                const y = h / 2 + Math.sin(x * 0.015 + audioWaveTime) * 35;
+                if (x === 0) audioCtx.moveTo(x, y);
+                else audioCtx.lineTo(x, y);
+            }
+            audioCtx.stroke();
+
+            audioCtx.beginPath();
+            audioCtx.lineWidth = 1.0;
+            audioCtx.strokeStyle = isLightMode ? 'rgba(109, 40, 217, 0.45)' : 'rgba(139, 92, 246, 0.45)';
+
+            for (let x = 0; x < w; x++) {
+
+                const noise = Math.sin(x * 0.25 + audioWaveTime * 2) * 5 * Math.sin(x * 0.015 + audioWaveTime);
+                const y = h / 2 + Math.sin(x * 0.015 + audioWaveTime) * 35 + noise;
+                if (x === 0) audioCtx.moveTo(x, y);
+                else audioCtx.lineTo(x, y);
+            }
+            audioCtx.stroke();
+        }
+
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            initParticles();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            mouse.targetX = e.clientX;
+            mouse.targetY = e.clientY;
+
+            const deltaX = (e.clientX - width / 2) / (width / 2);
+            const deltaY = (e.clientY - height / 2) / (height / 2);
+
+            targetRotX = -deltaY * 14;
+            targetRotY = deltaX * 14;
+            targetScale = 1.01;
+        });
+
+        document.addEventListener('mouseleave', () => {
+            targetRotX = 0;
+            targetRotY = 0;
+            targetScale = 1;
+            mouse.targetX = null;
+            mouse.targetY = null;
+            mouse.x = null;
+            mouse.y = null;
+            const activeCards = getActiveCards();
+            activeCards.forEach(card => {
+                card.style.transform = 'perspective(1200px) rotateX(0deg) rotateY(0deg) translateZ(0)';
+            });
+        });
+
+        function scrollToSlide(slideIndex) {
+            const wrapper = document.getElementById('appWrapper');
+            const targetSlide = slides[slideIndex];
+            wrapper.scrollTo({
+                top: targetSlide.offsetTop,
+                behavior: 'smooth'
+            });
+        }
+
+        appWrapper.addEventListener('scroll', () => {
+            const scrollPos = appWrapper.scrollTop;
+            let currentSlideIndex = 0;
+
+            slides.forEach((slide, index) => {
+                if (scrollPos >= slide.offsetTop - height / 2) {
+                    currentSlideIndex = index;
+                }
+            });
+
+            activeSlideIndex = currentSlideIndex;
+
+            slides.forEach((slide, index) => {
+                if (index === currentSlideIndex) {
+                    slide.classList.add('active');
+                } else {
+                    slide.classList.remove('active');
+                }
+            });
+        });
+
+        setTimeout(() => {
+            appWrapper.classList.remove('scroll-locked');
+            const arrow = document.getElementById('scrollArrow');
+            if (arrow) arrow.classList.add('visible');
+        }, 6000);
+
+        function navigateToStudio() {
+            document.body.classList.add('page-exit');
+            setTimeout(() => {
+                window.location.href = 'studio.html';
+            }, 500);
+        }
+
+        initParticles();
+        animate();
+    </script>
+</body>
+</html>
